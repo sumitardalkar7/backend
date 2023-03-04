@@ -1,63 +1,93 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const PORT = process.env.PORT || 3001;
-const app = express();
+import { useEffect, useState } from 'react';
+const api_base = 'https://mern-backend-sumit.onrender.com';
 
-app.use(express.json());
-app.use(cors());
+function App() {
+	const [todos, setTodos] = useState([]);
+	const [popupActive, setPopupActive] = useState(false);
+	const [newTodo, setNewTodo] = useState("");
 
-mongoose.connect(process.env.DB_URL, {
-	useNewUrlParser: true, 
-	useUnifiedTopology: true 
-}).then(() => console.log("Connected to MongoDB")).catch(console.error);
+	useEffect(() => {
+		GetTodos();
+	}, []);
 
-// Models
-const Todo = require('./models/Todo');
+	const GetTodos = () => {
+		fetch(api_base + '/todos')
+			.then(res => res.json())
+			.then(data => setTodos(data))
+			.catch((err) => console.error("Error: ", err));
+	}
 
-app.get('/todos', async (req, res) => {
-	const todos = await Todo.find();
+	const completeTodo = async id => {
+		const data = await fetch(api_base + '/todo/complete/' + id,{ method: "PUT" }).then(res => res.json());
 
-	res.json(todos);
-});
+		setTodos(todos => todos.map(todo => {
+			if (todo._id === data._id) {
+				todo.complete = data.complete;
+			}
 
-app.post('/todo/new', (req, res) => {
-	const todo = new Todo({
-		text: req.body.text
-	})
+			return todo;
+		}));
+		
+	}
 
-	todo.save();
+	const addTodo = async () => {
+		const data = await fetch(api_base + "/todo/new", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json" 
+			},
+			body: JSON.stringify({
+				text: newTodo
+			})
+		}).then(res => res.json());
 
-	res.json(todo);
-});
+		setTodos([...todos, data]);
 
-app.delete('/todo/delete/:id', async (req, res) => {
-	const result = await Todo.findByIdAndDelete(req.params.id);
+		setPopupActive(false);
+		setNewTodo("");
+	}
 
-	res.json({result});
-});
+	const deleteTodo = async id => {
+		const data = await fetch(api_base + '/todo/delete/' + id, { method: "DELETE" }).then(res => res.json());
 
-app.get('/todo/complete/:id', async (req, res) => {
-	const todo = await Todo.findById(req.params.id);
+		setTodos(todos => todos.filter(todo => todo._id !== data.result._id));
+	}
 
-	todo.complete = !todo.complete;
+	return (
+		<div className="App">
+			<h1>Welcome, Sumit</h1>
+			<h4>Your tasks</h4>
 
-	todo.save();
+			<div className="todos">
+				{todos.length > 0 ? todos.map(todo => (
+					<div className={
+						"todo" + (todo.complete ? " is-complete" : "")
+					} key={todo._id} onClick={() => completeTodo(todo._id)}>
+						<div className="checkbox"></div>
 
-	res.json(todo);
-})
+						<div className="text">{todo.text}</div>
 
-app.put('/todo/update/:id', async (req, res) => {
-	const todo = await Todo.findById(req.params.id);
+						<div className="delete-todo" onClick={() => deleteTodo(todo._id)}>x</div>
+					</div>
+				)) : (
+					<p>You currently have no tasks</p>
+				)}
+			</div>
 
-	todo.text = req.body.text;
+			<div className="addPopup" onClick={() => setPopupActive(true)}>+</div>
 
-	todo.save();
+			{popupActive ? (
+				<div className="popup">
+					<div className="closePopup" onClick={() => setPopupActive(false)}>X</div>
+					<div className="content">
+						<h3>Add Task</h3>
+						<input type="text" className="add-todo-input" onChange={e => setNewTodo(e.target.value)} value={newTodo} />
+						<div className="button" onClick={addTodo}>Create Task</div>
+					</div>
+				</div>
+			) : ''}
+		</div>
+	);
+}
 
-	res.json(todo);
-});
-
-//app.listen("https://mern-backend-sumit.onrender.com" );
-app.listen(PORT,()=>{
-	console.log(`server is running at ${PORT}`)
-})
+export default App;
