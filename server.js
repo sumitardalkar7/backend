@@ -1,13 +1,13 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-
+const PORT = process.env.PORT || 3001;
 const app = express();
 
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect("mongodb+srv://Aisha:RsxP12VV3wTHQnH6@cluster0.ppsrg8e.mongodb.net/todo?retryWrites=true&w=majority", {
+mongoose.connect(process.env.DB_URL, {
 	useNewUrlParser: true, 
 	useUnifiedTopology: true 
 }).then(() => console.log("Connected to MongoDB")).catch(console.error);
@@ -57,4 +57,7 @@ app.put('/todo/update/:id', async (req, res) => {
 	res.json(todo);
 });
 
-app.listen(3001);
+//app.listen("https://mern-backend-sumit.onrender.com" );
+app.listen(PORT,()=>{
+	console.log(`server is running at ${PORT}`)
+})
